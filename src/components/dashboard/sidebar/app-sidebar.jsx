@@ -19,6 +19,7 @@ import {
   Building2,
   Bell,
   Link,
+  TrendingUp,
 } from "lucide-react";
 import useAuthStore from "@/store/authStore";
 import { NavHeader } from "@/components/dashboard/sidebar/nav-header";
@@ -66,6 +67,12 @@ const AppSidebar = (props) => {
           icon: BarChart3,
         },
       ],
+    },
+    {
+      title: "Profit & Loss",
+      url: "/dashboard/profit-loss",
+      icon: TrendingUp,
+      items: [],
     },
     {
       title: "Settings",

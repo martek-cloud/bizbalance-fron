@@ -28,6 +28,7 @@ import VehicleUsage from "@/pages/VehicleUI/VehicleUsage";
 import MultiStepForm from "./pages/ExpensesUI/ExpenseCompo/MultiStepForm";
 import NoBusiness from "./pages/NoBusiness";
 import ExpensesSummaryPage from "./pages/ExpensesUI/ExpensesSummaryPage";
+import { ProfitLoss } from "./pages/ProfitLossUI";
 
 export default function App() {
   return (
@@ -172,6 +173,17 @@ export default function App() {
                   <PermissionGuard module="mainExpenses" action="view">
                     <Layout>
                       <ExpensesSummaryPage />
+                    </Layout>
+                  </PermissionGuard>
+                }
+              />
+
+              <Route
+                path="/dashboard/profit-loss"
+                element={
+                  <PermissionGuard module="profitLoss" action="view">
+                    <Layout>
+                      <ProfitLoss />
                     </Layout>
                   </PermissionGuard>
                 }

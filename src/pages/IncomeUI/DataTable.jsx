@@ -66,13 +66,20 @@ import { CalendarDateRangePicker } from "@/pages/DashboardUI/calendar-date-range
 import { format, startOfMonth, endOfMonth } from "date-fns";
 
 const formSchema = z.object({
-  business_id: z.string().min(1, "Business ID is required"),
   gross_receipts_sales: z.number().min(0, "Must be a positive number"),
   returns: z.number().min(0, "Must be a positive number"),
   cost_of_goods_sold: z.number().min(0, "Must be a positive number"),
   income_date: z.string().min(1, "Date is required"),
   gross_income: z.number(),
 });
+
+const formatCurrency = (amount) => {
+  const value = parseFloat(amount) || 0;
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
 
 export default function DataTable() {
   // Store hooks
@@ -121,11 +128,10 @@ export default function DataTable() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      business_id: "",
       gross_receipts_sales: 0,
       returns: 0,
       cost_of_goods_sold: 0,
-      income_date: "",
+      income_date: format(new Date(), 'yyyy-MM-dd'),
       gross_income: 0,
     },
   });
@@ -153,6 +159,7 @@ export default function DataTable() {
         ...values,
         gross_income: calculatedGrossIncome,
         created_by: user.id,
+        business_id: "1" // Default business ID since we removed the selection
       };
 
       await createIncome(newRecord);
@@ -182,21 +189,27 @@ export default function DataTable() {
   // Table columns definition
   const columns = [
     {
-      accessorKey: "business_id",
+      accessorKey: "income_date",
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Business
+          Date
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => {
-        const business = businesses.find(
-          (b) => b.id.toString() === row.getValue("business_id")
+        const date = new Date(row.getValue("income_date"));
+        return (
+          <div className="text-left">
+            {date.toLocaleDateString('en-US', {
+              month: '2-digit',
+              day: '2-digit',
+              year: 'numeric'
+            })}
+          </div>
         );
-        return business?.business_name || row.getValue("business_id");
       },
     },
     {
@@ -206,30 +219,13 @@ export default function DataTable() {
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Price Per Unit
+          Gross Revenue
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => (
         <div className="text-center">
-          {row.getValue("gross_receipts_sales").toLocaleString()} $
-        </div>
-      ),
-    },
-    {
-      accessorKey: "returns",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Returns
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <div className="text-center">
-          {Math.floor(row.getValue("returns")).toLocaleString()}
+          $ {formatCurrency(row.getValue("gross_receipts_sales"))}
         </div>
       ),
     },
@@ -246,7 +242,24 @@ export default function DataTable() {
       ),
       cell: ({ row }) => (
         <div className="text-center">
-          {row.getValue("cost_of_goods_sold").toLocaleString()} $
+          $ {formatCurrency(row.getValue("cost_of_goods_sold"))}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "returns",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Returns
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="text-center">
+          $ {formatCurrency(row.getValue("returns"))}
         </div>
       ),
     },
@@ -257,32 +270,18 @@ export default function DataTable() {
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Gross Income
+          Net Total
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
-      cell: ({ row }) => (
-        <div
-          className={`text-center ${row.getValue("gross_income") >= 0
-              ? "text-green-600"
-              : "text-red-600"
-            }`}
-        >
-          {row.getValue("gross_income").toLocaleString()} $
-        </div>
-      ),
-    },
-    {
-      accessorKey: "income_date",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const value = row.getValue("gross_income");
+        return (
+          <div className={`text-center ${value >= 0 ? "text-green-600" : "text-red-600"}`}>
+            {value >= 0 ? '$ ' : '-$ '}{formatCurrency(Math.abs(value))}
+          </div>
+        );
+      },
     },
     {
       id: "actions",
@@ -408,12 +407,7 @@ export default function DataTable() {
                 </DialogTrigger>
               )}
             </div>
-            <DialogContent
-              onClose={() => {
-                form.reset();
-                setShowAddDialog(false);
-              }}
-            >
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add New Record</DialogTitle>
                 <DialogDescription>
@@ -427,36 +421,6 @@ export default function DataTable() {
                 >
                   <FormField
                     control={form.control}
-                    name="business_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Business</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a business" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {businesses.map((business) => (
-                              <SelectItem
-                                key={business.id}
-                                value={business.id.toString()}
-                              >
-                                {business.business_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
                     name="gross_receipts_sales"
                     render={({ field }) => (
                       <FormItem>
@@ -464,11 +428,11 @@ export default function DataTable() {
                         <FormControl>
                           <Input
                             type="number"
+                            step="0.01"
+                            min="0"
                             placeholder="0.00"
                             {...field}
-                            onChange={(e) =>
-                              field.onChange(Number(e.target.value))
-                            }
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -484,11 +448,11 @@ export default function DataTable() {
                         <FormControl>
                           <Input
                             type="number"
+                            step="0.01"
+                            min="0"
                             placeholder="0.00"
                             {...field}
-                            onChange={(e) =>
-                              field.onChange(Number(e.target.value))
-                            }
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -504,11 +468,11 @@ export default function DataTable() {
                         <FormControl>
                           <Input
                             type="number"
+                            step="0.01"
+                            min="0"
                             placeholder="0.00"
                             {...field}
-                            onChange={(e) =>
-                              field.onChange(Number(e.target.value))
-                            }
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -568,19 +532,6 @@ export default function DataTable() {
       </CardHeader>
       <CardContent className="px-0">
         <div className="w-full">
-          <div className="flex items-center py-4">
-            <Input
-              placeholder="Filter by business..."
-              value={table.getColumn("business_id")?.getFilterValue() ?? ""}
-              onChange={(event) =>
-                table
-                  .getColumn("business_id")
-                  ?.setFilterValue(event.target.value)
-              }
-              className="max-w-sm"
-            />
-          </div>
-
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -601,18 +552,47 @@ export default function DataTable() {
               </TableHeader>
               <TableBody>
                 {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
+                  <>
+                    {table.getRowModel().rows.map((row) => (
+                      <TableRow key={row.id}>
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                    <TableRow className="border-t-2 border-primary font-bold bg-muted/50">
+                      <TableCell className="text-left font-bold">
+                        Total
+                      </TableCell>
+                      <TableCell className="text-center text-emerald-600">
+                        $ {formatCurrency(incomes.reduce((sum, income) => sum + (parseFloat(income.gross_receipts_sales) || 0), 0))}
+                      </TableCell>
+                      <TableCell className="text-center text-red-600">
+                        -$ {formatCurrency(incomes.reduce((sum, income) => sum + (parseFloat(income.cost_of_goods_sold) || 0), 0))}
+                      </TableCell>
+                      <TableCell className="text-center text-red-600">
+                        -$ {formatCurrency(incomes.reduce((sum, income) => sum + (parseFloat(income.returns) || 0), 0))}
+                      </TableCell>
+                      <TableCell className={`text-center ${
+                        incomes.reduce((sum, income) => sum + (parseFloat(income.gross_income) || 0), 0) >= 0 
+                        ? "text-blue-600" 
+                        : "text-red-600"
+                      }`}>
+                        {(() => {
+                          const total = incomes.reduce((sum, income) => sum + (parseFloat(income.gross_income) || 0), 0);
+                          return total >= 0 
+                            ? `$ ${formatCurrency(total)}` 
+                            : `-$ ${formatCurrency(Math.abs(total))}`;
+                        })()}
+                      </TableCell>
+                      <TableCell />
                     </TableRow>
-                  ))
+                  </>
                 ) : (
                   <TableRow>
                     <TableCell

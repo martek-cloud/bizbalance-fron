@@ -83,6 +83,12 @@ export function Header() {
         href: '/dashboard/income' 
       });
     }
+    else if (paths.includes('profit-loss')) {
+      breadcrumbs.push({
+        label: 'Profit & Loss',
+        href: '/dashboard/profit-loss'
+      });
+    }
     else if (paths.includes('vehicle')) {
       breadcrumbs.push({
         label: 'Vehicles',

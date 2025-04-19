@@ -78,6 +78,12 @@ function Permissions() {
       edit: false,
       delete: false,
     },
+    profitLoss: {
+      view: false,
+      create: false,
+      edit: false,
+      delete: false,
+    },
   });
 
   const modules = [
@@ -89,6 +95,7 @@ function Permissions() {
     { name: "Income", key: "income" },
     { name: "Vehicle", key: "vehicle" },
     { name: "Main Expenses", key: "mainExpenses" },
+    { name: "Profit & Loss", key: "profitLoss" },
   ];
 
   const actions = [
@@ -134,7 +141,13 @@ function Permissions() {
                   create: false,
                   edit: false,
                   delete: false,
-                }
+                },
+                profitLoss: parsedPermissions.profitLoss || {
+                  view: false,
+                  create: false,
+                  edit: false,
+                  delete: false,
+                },
               }));
             } catch (e) {
               console.error("Error parsing permissions:", e);
